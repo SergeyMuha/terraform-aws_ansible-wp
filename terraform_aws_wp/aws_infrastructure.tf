@@ -185,7 +185,7 @@ resource "aws_instance" "workers" {
   associate_public_ip_address = "false"
   instance_type = "t2.micro"
   subnet_id	= "${aws_subnet.subnetmuhass.id}"
-  key_name 	= "sergeymuha"
+  key_name 	= "terraformwp"
 
   provisioner "local-exec" {
     command = "echo '       ' server workers${count.index} ${self.private_ip}:80 >> ../ansible_wp_setup/roles/haproxy/templates/haproxy.cfg.j2"
@@ -202,19 +202,29 @@ resource "aws_instance" "workers" {
 output "filesysid" {
   value = "${aws_efs_file_system.docroot.dns_name}"
 }
+
+output "filesysid" {
+  value = "${aws_instance.haproxy.public_dns}"
+}
+
+output "filesysid" {
+  value = "${aws_instance.bastion.public_dns}"
+}
+
+
 resource "aws_instance" "haproxy" {
   count = 1
   ami           = "ami-467ca739"
   instance_type = "t2.micro"
   subnet_id     = "${aws_subnet.subnetmuhas.id}"
-  key_name      = "sergeymuha"
+  key_name      = "terraformwp"
   provisioner "file" {
     source      = "files/filesysid_for_mount.txt"
     destination = "/tmp/filesysid_for_mount.txt"
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
   provisioner "file" {
@@ -223,7 +233,7 @@ resource "aws_instance" "haproxy" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
@@ -231,7 +241,7 @@ resource "aws_instance" "haproxy" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
     scripts = [
       "mount.sh",
@@ -245,7 +255,7 @@ resource "aws_instance" "haproxy" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
@@ -259,7 +269,7 @@ resource "aws_instance" "bastion" {
   ami           = "ami-467ca739"
   instance_type = "t2.micro"
   subnet_id     = "${aws_subnet.subnetmuhas.id}"
-  key_name      = "sergeymuha"
+  key_name      = "terraformwp"
 
   provisioner "file" {
     source      = "mount.sh"
@@ -268,17 +278,17 @@ resource "aws_instance" "bastion" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
   provisioner "file" {
-    source      = "~/.ssh/aws_altoros_key.pem"
-    destination = "~/.ssh/aws_altoros_key.pem"
+    source      = "~/.ssh/terraformwp.pem"
+    destination = "~/.ssh/terraformwp.pem"
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
@@ -289,7 +299,7 @@ resource "aws_instance" "bastion" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
@@ -300,7 +310,7 @@ resource "aws_instance" "bastion" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
@@ -309,7 +319,7 @@ resource "aws_instance" "bastion" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
     scripts = [
       "bastion_init.sh",
@@ -322,7 +332,7 @@ resource "aws_instance" "bastion" {
     connection {
       type     = "ssh"
       user     = "ec2-user"
-      private_key = "${file("~/.ssh/aws_altoros_key.pem")}"
+      private_key = "${file("~/.ssh/terraformwp.pem")}"
     }
   }
 
