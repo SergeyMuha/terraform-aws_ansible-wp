@@ -1,0 +1,63 @@
+--- 
+- 
+  name: "Add repository"
+  when: "(ansible_distribution == \"Amazon\")"
+  yum_repository: 
+    baseurl: "http://dl.fedoraproject.org/pub/epel/7/x86_64/"
+    description: "EPEL YUM repo"
+    name: epel
+- 
+  name: "Install services for other OS"
+  package: "name={{ item }} state=latest"
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - haproxy
+    - php
+    - mysql-server
+    - php-mysql
+    - mysql-devel
+    - gcc
+- 
+  name: "Turn MySQL"
+  service: "name={{item}} state=started enabled=yes"
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - haproxy
+    - mysqld
+- 
+  template: 
+    dest: /etc/haproxy/haproxy.cfg
+    group: root
+    mode: 493
+    owner: root
+    src: templates/haproxy.cfg.j2
+- 
+  name: "python Mysql"
+  pip: 
+    name: MySQL-python
+  when: "(ansible_distribution == \"Amazon\")"
+- 
+  command: "{{ item }}"
+  ignore_errors: true
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - "curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+    - "chmod +x wp-cli.phar"
+    - "mv wp-cli.phar /usr/local/bin/wp"
+    - "/usr/local/bin/wp core download --allow-root --path=/var/www/html/wordpress"
+    - "chown -R apache:apache /var/www"
+- 
+  name: "Setup wp-config.php"
+  shell: "/usr/local/bin/wp core config --dbhost=$(cat /tmp/endpoint_for_wpdb.txt) --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --allow-root --path=/var/www/html/wordpress"
+  ignore_errors: true
+- 
+  name: "Install WP"
+  shell: "a=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname) && /usr/local/bin/wp core install --url=\"$a\" --title=\"Blog Title\" --admin_user=\"admin\" --admin_password=\"wordpress\" --admin_email=\"email@domain.com\" --allow-root --path=/var/www/html/wordpress "
+  when: "(ansible_distribution == \"Amazon\")"
+- 
+  name: "Restart service haproxy for new config"
+  service:
+    name: haproxy 
+    state: restarted
+  when: "(ansible_distribution == \"Amazon\")"
+

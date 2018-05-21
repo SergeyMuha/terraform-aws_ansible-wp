@@ -1,0 +1,28 @@
+global
+   log /dev/log local0
+   log /dev/log local1 notice
+   chroot /var/lib/haproxy
+   stats timeout 30s
+   user haproxy
+   group haproxy
+   daemon
+
+defaults
+   log global
+   mode http
+   option httplog
+   option dontlognull
+   timeout connect 5000
+   timeout client 50000
+   timeout server 50000
+frontend firstbalance
+        bind *:80
+        option forwardfor
+        default_backend webservers
+
+backend webservers
+        balance roundrobin
+        option httpchk
+        server workers0 192.168.0.72:80
+        server workers1 192.168.0.119:80
+        server workers2 192.168.0.74:80

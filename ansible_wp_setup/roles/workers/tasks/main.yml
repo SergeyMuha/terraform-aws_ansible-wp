@@ -1,0 +1,47 @@
+--- 
+- 
+  name: "Add repository"
+  when: "(ansible_distribution == \"Amazon\")"
+  yum_repository: 
+    baseurl: "http://dl.fedoraproject.org/pub/epel/7/x86_64/"
+    description: "EPEL YUM repo"
+    name: epel
+- 
+  name: "Install services for other OS"
+  package: "name={{ item }} state=latest"
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - httpd
+    - php
+    - mysql-server
+    - php-mysql
+    - mysql-devel
+    - gcc
+- 
+  name: "Turn on Apache and MySQL"
+  service: "name={{item}} state=started enabled=yes"
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - mysqld
+    - httpd
+- 
+  replace: 
+    backup: true
+    path: /etc/httpd/conf/httpd.conf
+    regexp: "DocumentRoot \"\\/var\\/www\\/html\""
+    replace: "DocumentRoot \"/var/www/html/wordpress\""
+  when: "(ansible_distribution == \"Amazon\")"
+- 
+  command: "{{ item }}"
+  ignore_errors: true
+  when: "(ansible_distribution == \"Amazon\")"
+  with_items: 
+    - "service httpd reload"
+    - "chown -R apache:apache /var/www"
+- 
+  name: "Restart service httpd, in all cases"
+  service: 
+    name: httpd
+    state: restarted
+  when: "(ansible_distribution == \"Amazon\")"
+

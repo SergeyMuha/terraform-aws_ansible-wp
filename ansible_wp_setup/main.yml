@@ -1,0 +1,19 @@
+---
+
+- hosts: tag_ansible_group_workers
+  remote_user: ec2-user
+  become: yes
+  roles: 
+    - workers
+  
+  tags: workers
+
+
+- hosts: tag_Name_haproxy_muha
+  remote_user: ec2-user
+  become: yes
+  roles:
+    - haproxy
+
+  tags: haproxy
+

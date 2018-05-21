@@ -1,0 +1,184 @@
+---
+- hosts: server-apt
+  vars:
+    http_port: 80
+    max_clients: 200
+  remote_user: ubuntu
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  tasks:
+  - name: Install services 16.04
+    apt: name={{ item }} update_cache=yes state=latest
+    with_items:
+    - apache2 
+    - php
+    - mysql-server
+    - debconf-utils
+    - php-mysql
+    - libapache2-mod-php7.0
+    - python-mysqldb
+    - python3-mysqldb
+    when: (ansible_distribution == "Ubuntu" and ansible_distribution_version == "16.04")
+  - name: Install services 14.04
+    apt: name={{ item }} update_cache=yes state=latest
+    with_items:
+    - apache2
+    - php5
+    - mysql-server
+    - debconf-utils
+    - php5-mysql
+    - libapache2-mod-php5
+    - python-mysqldb
+    when: (ansible_distribution == "Ubuntu" and ansible_distribution_version == "14.04")
+  - name: Set hostname variable
+    shell: "a=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname) && echo $a"
+    when: (ansible_distribution == "Ubuntu")
+  - name: Creates directory
+    file: path=/var/www/html/wordpress state=directory
+    when: (ansible_distribution == "Ubuntu")
+  - copy:
+      src: /etc/apache2/sites-available/000-default.conf
+      dest: /etc/apache2/sites-available/wordpress.conf
+      remote_src: yes
+    when: (ansible_distribution == "Ubuntu")
+  - replace:
+      path: /etc/apache2/sites-available/wordpress.conf
+      regexp: 'DocumentRoot \/var\/www\/html'
+      replace: 'DocumentRoot /var/www/html/wordpress'
+      backup: yes
+    when: (ansible_distribution == "Ubuntu")
+  - name: Create a new database with name 'wordpress'
+    mysql_db:
+      name: wordpress
+      state: present
+    when: (ansible_distribution == "Ubuntu")
+  - mysql_user:
+      name: wordpress
+      password: qwerty
+      priv: '*.*:ALL,GRANT'
+      state: present
+    when: (ansible_distribution == "Ubuntu")
+  - command: "{{ item }}"
+    with_items:
+    - debconf-set-selections <<< "mysql-server mysql-server/root_password password qwerty"
+    - debconf-set-selections <<< "mysql-server mysql-server/root_password_again password qwerty"
+    - curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    - chmod +x wp-cli.phar
+    - mv wp-cli.phar /usr/local/bin/wp
+    - wp core download --allow-root --path=/var/www/html/wordpress
+    - wp core config --dbname=wordpress --dbuser=wordpress --dbpass=qwerty --allow-root --path=/var/www/html/wordpress
+    - a2dissite 000-default.conf
+    - a2ensite wordpress.conf
+    - service apache2 reload
+    - chown -R www-data:www-data /var/www
+    - service apache2 restart
+    when: (ansible_distribution == "Ubuntu")
+    ignore_errors: yes
+  - name: Install WP
+    shell: 'a=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname) && wp core install --url="$a" --title="Blog Title" --admin_user="admin" --admin_password="wordpress" --admin_email="email@domain.com" --allow-root --path=/var/www/html/wordpress '
+  - name: Restart service httpd, in all cases
+    service:
+      name: apache2
+      state: restarted
+    when: (ansible_distribution == "Ubuntu") 
+  become: yes
+  ignore_errors: yes
+
+- hosts: tag_Name_haproxy_muha
+  remote_user: ec2-user
+  tasks:
+  - name: Add repository
+    yum_repository:
+      name: epel
+      description: EPEL YUM repo
+      baseurl: http://dl.fedoraproject.org/pub/epel/7/x86_64/
+    when: (ansible_distribution == "Amazon")
+  - name: Install services for other OS
+    package: name={{ item }} state=latest
+    with_items:
+    - haproxy
+    - php
+    - mysql-server
+    - php-mysql
+    - mysql-devel
+    - gcc
+    when: (ansible_distribution == "Amazon")
+  - name: "Turn MySQL"
+    service: name={{item}} state=started enabled=yes
+    with_items:
+      - haproxy
+      - mysqld
+    when: (ansible_distribution == "Amazon")
+  - template:
+      src: templates/haproxy.cfg.j2
+      dest: /etc/haproxy/haproxy.cfg
+      owner: root
+      group: root
+      mode: 0755
+  - name: python Mysql
+    pip:
+      name: MySQL-python
+    when: (ansible_distribution == "Amazon")
+  - command: "{{ item }}"
+    with_items:
+    - curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    - chmod +x wp-cli.phar
+    - mv wp-cli.phar /usr/local/bin/wp
+    - /usr/local/bin/wp core download --allow-root --path=/var/www/html/wordpress
+    - chown -R apache:apache /var/www
+    ignore_errors: yes
+    when: (ansible_distribution == "Amazon")
+  - name: Setup wp-config.php
+    shell: /usr/local/bin/wp core config --dbhost=$(cat /tmp/endpoint_for_wpdb.txt) --dbname=wordpress --dbuser=wordpress --dbpass=wordpress --allow-root --path=/var/www/html/wordpress
+    ignore_errors: yes
+  - name: Install WP
+    shell: 'a=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname) && /usr/local/bin/wp core install --url="$a" --title="Blog Title" --admin_user="admin" --admin_password="wordpress" --admin_email="email@domain.com" --allow-root --path=/var/www/html/wordpress '
+    ignore_errors: yes
+    when: (ansible_distribution == "Amazon")
+  become: yes
+- hosts: tag_Name_workers_muha
+  vars:
+    http_port: 80
+    max_clients: 200
+  remote_user: ec2-user
+  tasks:
+  - name: Add repository
+    yum_repository:
+      name: epel
+      description: EPEL YUM repo
+      baseurl: http://dl.fedoraproject.org/pub/epel/7/x86_64/
+    when: (ansible_distribution == "Amazon")
+  - name: Install services for other OS
+    package: name={{ item }} state=latest
+    with_items:
+    - httpd
+    - php
+    - mysql-server
+    - php-mysql
+    - mysql-devel
+    - gcc
+    when: (ansible_distribution == "Amazon")
+  - name: "Turn on Apache and MySQL"
+    service: name={{item}} state=started enabled=yes
+    with_items:
+      - mysqld
+      - httpd
+    when: (ansible_distribution == "Amazon")
+  - replace:
+      path: /etc/httpd/conf/httpd.conf
+      regexp: 'DocumentRoot "\/var\/www\/html"'
+      replace: 'DocumentRoot "/var/www/html/wordpress"'
+      backup: yes
+    when: (ansible_distribution == "Amazon")
+  - command: "{{ item }}"
+    with_items:
+    - service httpd reload
+    - chown -R apache:apache /var/www
+    ignore_errors: yes
+    when: (ansible_distribution == "Amazon")
+  - name: Restart service httpd, in all cases
+    service:
+      name: httpd
+      state: restarted
+    when: (ansible_distribution == "Amazon")
+  become: yes
