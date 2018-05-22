@@ -23,9 +23,9 @@ Create aws key-pair
 
 ###### terraform init
 
-Deploy infrastructure 
+Deploy infrastructure. This command will output dns name for haproxy and bastion 
 
-###### terraform apply -input=false -auto-approve   --- will output dns name for haproxy and bastion
+###### terraform apply -input=false -auto-approve
 
 SSH to bastion host to deploy wp with ansible
 
