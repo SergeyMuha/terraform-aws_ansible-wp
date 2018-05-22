@@ -203,11 +203,11 @@ output "filesysid" {
   value = "${aws_efs_file_system.docroot.dns_name}"
 }
 
-output "filesysid" {
+output "DNS-HAPROXY" {
   value = "${aws_instance.haproxy.public_dns}"
 }
 
-output "filesysid" {
+output "DNS-BASTION-HOST" {
   value = "${aws_instance.bastion.public_dns}"
 }
 

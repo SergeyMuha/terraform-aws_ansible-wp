@@ -15,6 +15,8 @@ Create aws key-pair
 
 ###### mkdir somedir
 
+###### cd somedir
+
 ###### git clone https://github.com/SergeyMuha/terraform-aws_ansible-wp.git
 
 ###### cd terraform-aws_ansible-wp/terraform_aws_wp/
